@@ -1,0 +1,1312 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/Chaithanyaistharla/Chaithanya_INFO5731_Spring2025/blob/main/Istharla_Chaithanya_Assignment_02\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "Ryk8D1Q4Wsrp"
+      },
+      "source": [
+        "# **INFO5731 Assignment 2**\n",
+        "\n",
+        "In this assignment, you will work on gathering text data from an open data source via web scraping or API. Following this, you will need to clean the text data and perform syntactic analysis on the data. Follow the instructions carefully and design well-structured Python programs to address each question.\n",
+        "\n",
+        "**Expectations**:\n",
+        "*   Use the provided .*ipynb* document to write your code & respond to the questions. Avoid generating a new file.\n",
+        "*   Write complete answers and run all the cells before submission.\n",
+        "*   Make sure the submission is \"clean\"; *i.e.*, no unnecessary code cells.\n",
+        "*   Once finished, allow shared rights from top right corner (*see Canvas for details*).\n",
+        "\n",
+        "* **Make sure to submit the cleaned data CSV in the comment section - 10 points**\n",
+        "\n",
+        "**Total points**: 100\n",
+        "\n",
+        "**Deadline**: Monday, at 11:59 PM.\n",
+        "\n",
+        "**Late Submission will have a penalty of 10% reduction for each day after the deadline.**\n",
+        "\n",
+        "**Please check that the link you submitted can be opened and points to the correct assignment.**\n"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "JkzR8cFAyGik"
+      },
+      "source": [
+        "# Question 1 (25 points)\n",
+        "\n",
+        "Write a python program to collect text data from **either of the following sources** and save the data into a **csv file:**\n",
+        "\n",
+        "(1) Collect all the customer reviews of a product (you can choose any porduct) on amazon. [atleast 1000 reviews]\n",
+        "\n",
+        "(2) Collect the top 1000 User Reviews of a movie recently in 2023 or 2024 (you can choose any movie) from IMDB. [If one movie doesn't have sufficient reviews, collect reviews of atleast 2 or 3 movies]\n",
+        "\n",
+        "\n",
+        "(3) Collect the **abstracts** of the top 10000 research papers by using the query \"machine learning\", \"data science\", \"artifical intelligence\", or \"information extraction\" from Semantic Scholar.\n",
+        "\n",
+        "(4) Collect all the information of the 904 narrators in the Densho Digital Repository.\n",
+        "\n",
+        "(5)**Collect a total of 10000 reviews** of the top 100 most popular software from G2 and Capterra.\n"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "from bs4 import BeautifulSoup as bs\n",
+        "import requests\n",
+        "import pandas as pd\n",
+        "import time\n",
+        "from itertools import zip_longest\n",
+        "\n",
+        "base_url = \"https://www.amazon.com/Apple-iPhone-15-Pro-Titanium/dp/B0CMZG4M6H/ref=cm_cr_srp_mb_bdcrb_top?ie=UTF8&th=1\"\n",
+        "\n",
+        "cust_name, review_title, rate, review_content = [], [], [], []\n",
+        "total_reviews = 1000\n",
+        "reviews_per_page = 10\n",
+        "pages_to_scrape = total_reviews // reviews_per_page\n",
+        "\n",
+        "for page in range(1, pages_to_scrape + 1):\n",
+        "    print(f\"Scraping page {page}...\")\n",
+        "\n",
+        "    page_url = base_url.format(page, page)\n",
+        "    headers = {\n",
+        "        \"User-Agent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36\"\n",
+        "    }\n",
+        "    response = requests.get(page_url, headers=headers)\n",
+        "\n",
+        "    if response.status_code != 200:\n",
+        "        print(f\"Failed to fetch page {page}, status code: {response.status_code}\")\n",
+        "        break\n",
+        "\n",
+        "    soup = bs(response.content, 'html.parser')\n",
+        "\n",
+        "    names = [name.get_text().strip() for name in soup.find_all('span', class_='a-profile-name')]\n",
+        "    titles = [title.get_text(strip=True).replace(\"5.0 out of 5 stars\\n\", \"\") for title in soup.find_all('a', class_='review-title')]\n",
+        "    ratings = [rating.get_text().strip() for rating in soup.find_all('i', class_='review-rating')]\n",
+        "    reviews = [review.get_text(strip=True) for review in soup.find_all('span', {\"data-hook\": \"review-body\"})]\n",
+        "\n",
+        "    # Ensure lists have equal length\n",
+        "    min_length = min(len(names), len(titles), len(ratings), len(reviews))\n",
+        "\n",
+        "    for i in range(min_length):\n",
+        "        if names[i]:  # Ensures name is not empty\n",
+        "            cust_name.append(names[i])\n",
+        "            review_title.append(titles[i])\n",
+        "            rate.append(ratings[i])\n",
+        "            review_content.append(reviews[i])\n",
+        "\n",
+        "    time.sleep(2)\n",
+        "\n",
+        "# Creating DataFrame and saving to CSV\n",
+        "data = list(zip_longest(cust_name, review_title, rate, review_content, fillvalue=\"NULL\"))\n",
+        "df = pd.DataFrame(data, columns=[\"Customer Name\", \"Review Title\", \"Rating\", \"Reviews\"])\n",
+        "df.to_csv(\"amazon_reviews.csv\", index=False)\n",
+        "\n",
+        "print(\"Scraping completed! Data saved to amazon_reviews.csv\")"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "pRNLz7TsWNnp",
+        "outputId": "be147ec2-be90-454b-e36a-da1029babf87"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Scraping page 1...\n",
+            "Scraping page 2...\n",
+            "Scraping page 3...\n",
+            "Scraping page 4...\n",
+            "Scraping page 5...\n",
+            "Scraping page 6...\n",
+            "Scraping page 7...\n",
+            "Scraping page 8...\n",
+            "Scraping page 9...\n",
+            "Scraping page 10...\n",
+            "Scraping page 11...\n",
+            "Scraping page 12...\n",
+            "Scraping page 13...\n",
+            "Scraping page 14...\n",
+            "Scraping page 15...\n",
+            "Scraping page 16...\n",
+            "Scraping page 17...\n",
+            "Scraping page 18...\n",
+            "Scraping page 19...\n",
+            "Scraping page 20...\n",
+            "Scraping page 21...\n",
+            "Scraping page 22...\n",
+            "Scraping page 23...\n",
+            "Scraping page 24...\n",
+            "Scraping page 25...\n",
+            "Scraping page 26...\n",
+            "Scraping page 27...\n",
+            "Scraping page 28...\n",
+            "Scraping page 29...\n",
+            "Scraping page 30...\n",
+            "Scraping page 31...\n",
+            "Scraping page 32...\n",
+            "Scraping page 33...\n",
+            "Scraping page 34...\n",
+            "Scraping page 35...\n",
+            "Scraping page 36...\n",
+            "Scraping page 37...\n",
+            "Scraping page 38...\n",
+            "Scraping page 39...\n",
+            "Scraping page 40...\n",
+            "Scraping page 41...\n",
+            "Scraping page 42...\n",
+            "Scraping page 43...\n",
+            "Scraping page 44...\n",
+            "Scraping page 45...\n",
+            "Scraping page 46...\n",
+            "Scraping page 47...\n",
+            "Scraping page 48...\n",
+            "Scraping page 49...\n",
+            "Scraping page 50...\n",
+            "Scraping page 51...\n",
+            "Scraping page 52...\n",
+            "Scraping page 53...\n",
+            "Scraping page 54...\n",
+            "Scraping page 55...\n",
+            "Scraping page 56...\n",
+            "Scraping page 57...\n",
+            "Scraping page 58...\n",
+            "Scraping page 59...\n",
+            "Scraping page 60...\n",
+            "Scraping page 61...\n",
+            "Scraping page 62...\n",
+            "Scraping page 63...\n",
+            "Scraping page 64...\n",
+            "Scraping page 65...\n",
+            "Scraping page 66...\n",
+            "Scraping page 67...\n",
+            "Scraping page 68...\n",
+            "Scraping page 69...\n",
+            "Scraping page 70...\n",
+            "Scraping page 71...\n",
+            "Scraping page 72...\n",
+            "Scraping page 73...\n",
+            "Scraping page 74...\n",
+            "Scraping page 75...\n",
+            "Scraping page 76...\n",
+            "Scraping page 77...\n",
+            "Scraping page 78...\n",
+            "Scraping page 79...\n",
+            "Scraping page 80...\n",
+            "Scraping page 81...\n",
+            "Scraping page 82...\n",
+            "Scraping page 83...\n",
+            "Scraping page 84...\n",
+            "Scraping page 85...\n",
+            "Scraping page 86...\n",
+            "Scraping page 87...\n",
+            "Scraping page 88...\n",
+            "Scraping page 89...\n",
+            "Scraping page 90...\n",
+            "Scraping page 91...\n",
+            "Scraping page 92...\n",
+            "Scraping page 93...\n",
+            "Scraping page 94...\n",
+            "Scraping page 95...\n",
+            "Scraping page 96...\n",
+            "Scraping page 97...\n",
+            "Scraping page 98...\n",
+            "Scraping page 99...\n",
+            "Scraping page 100...\n",
+            "Scraping completed! Data saved to amazon_reviews.csv\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "90_NR8c5XGWc"
+      },
+      "source": [
+        "# Question 2 (15 points)\n",
+        "\n",
+        "Write a python program to **clean the text data** you collected in the previous question and save the clean data in a new column in the csv file. The data cleaning steps include: [Code and output is required for each part]\n",
+        "\n",
+        "(1) Remove noise, such as special characters and punctuations.\n",
+        "\n",
+        "(2) Remove numbers.\n",
+        "\n",
+        "(3) Remove stopwords by using the stopwords list.\n",
+        "\n",
+        "(4) Lowercase all texts\n",
+        "\n",
+        "(5) Stemming.\n",
+        "\n",
+        "(6) Lemmatization."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 2,
+      "metadata": {
+        "id": "5QX6bJjGWXY9",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "5801aea4-f3bb-4441-ef1d-88a30588c2e5"
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stderr",
+          "text": [
+            "[nltk_data] Downloading package punkt to /root/nltk_data...\n",
+            "[nltk_data]   Unzipping tokenizers/punkt.zip.\n",
+            "[nltk_data] Downloading package stopwords to /root/nltk_data...\n",
+            "[nltk_data]   Package stopwords is already up-to-date!\n",
+            "[nltk_data] Downloading package wordnet to /root/nltk_data...\n",
+            "[nltk_data]   Package wordnet is already up-to-date!\n",
+            "[nltk_data] Downloading package omw-1.4 to /root/nltk_data...\n",
+            "[nltk_data]   Package omw-1.4 is already up-to-date!\n",
+            "[nltk_data] Downloading package averaged_perceptron_tagger to\n",
+            "[nltk_data]     /root/nltk_data...\n"
+          ]
+        },
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Dataset loaded successfully!\n",
+            "                                       Customer Name  \\\n",
+            "0  iPhone 15 pro review - 6 months later, still g...   \n",
+            "1  iPhone 15 pro review - 6 months later, still g...   \n",
+            "2  iPhone 15 pro review - 6 months later, still g...   \n",
+            "3                                    Amazon Customer   \n",
+            "4                                    Amazon Customer   \n",
+            "\n",
+            "                                 Review Title              Rating  \\\n",
+            "0    5.0 out of 5 starsBetter than expected!!  5.0 out of 5 stars   \n",
+            "1    5.0 out of 5 starsBetter than expected!!  5.0 out of 5 stars   \n",
+            "2    5.0 out of 5 starsBetter than expected!!  5.0 out of 5 stars   \n",
+            "3   5.0 out of 5 starsArrived pretty flawless  5.0 out of 5 stars   \n",
+            "4  5.0 out of 5 starsRefurbished works great!  5.0 out of 5 stars   \n",
+            "\n",
+            "                                             Reviews  \n",
+            "0  I never write reviews but I figured I would be...  \n",
+            "1  I never write reviews but I figured I would be...  \n",
+            "2  I never write reviews but I figured I would be...  \n",
+            "3  90% battery life, screen was in almost perfect...  \n",
+            "4  I was a little hesitant to get a refurbished p...  \n",
+            "Cleaned data saved successfully in 'cleaned_amazon_reviews.csv'!\n",
+            "                                             Reviews  \\\n",
+            "0  I never write reviews but I figured I would be...   \n",
+            "1  I never write reviews but I figured I would be...   \n",
+            "2  I never write reviews but I figured I would be...   \n",
+            "3  90% battery life, screen was in almost perfect...   \n",
+            "4  I was a little hesitant to get a refurbished p...   \n",
+            "\n",
+            "                                     Cleaned_Reviews  \n",
+            "0  never write reviews figured would theres many ...  \n",
+            "1  never write reviews figured would theres many ...  \n",
+            "2  never write reviews figured would theres many ...  \n",
+            "3  battery life screen almost perfect condition s...  \n",
+            "4  little hesitant get refurbished phone phone am...  \n"
+          ]
+        },
+        {
+          "output_type": "stream",
+          "name": "stderr",
+          "text": [
+            "[nltk_data]   Package averaged_perceptron_tagger is already up-to-\n",
+            "[nltk_data]       date!\n"
+          ]
+        }
+      ],
+      "source": [
+        "import pandas as pd\n",
+        "import re\n",
+        "import nltk\n",
+        "from nltk.tokenize import word_tokenize\n",
+        "from nltk.corpus import stopwords\n",
+        "\n",
+        "# Download necessary NLTK resources\n",
+        "nltk.download('punkt')\n",
+        "nltk.download('stopwords')\n",
+        "nltk.download('wordnet')\n",
+        "nltk.download('omw-1.4')\n",
+        "nltk.download('averaged_perceptron_tagger')\n",
+        "\n",
+        "# Load NLTK stopwords\n",
+        "stop_words = set(stopwords.words('english'))\n",
+        "\n",
+        "# Load the dataset\n",
+        "try:\n",
+        "    df = pd.read_csv(\"amazon_reviews.csv\")\n",
+        "    print(\"Dataset loaded successfully!\")\n",
+        "except FileNotFoundError:\n",
+        "    print(\"Error: amazon_reviews.csv not found!\")\n",
+        "    exit()\n",
+        "\n",
+        "# Display the first few rows\n",
+        "print(df.head())\n",
+        "\n",
+        "# Text cleaning function: remove special characters, numbers, and stopwords\n",
+        "def clean_text(text):\n",
+        "    text = re.sub(r\"[^a-zA-Z\\s]\", \"\", str(text))  # Keep only letters and spaces\n",
+        "    words = word_tokenize(text.lower())  # Tokenize and convert to lowercase\n",
+        "    words = [word for word in words if word not in stop_words]  # Remove stopwords\n",
+        "    return \" \".join(words)\n",
+        "\n",
+        "# Apply text cleaning\n",
+        "df[\"Cleaned_Reviews\"] = df[\"Reviews\"].astype(str).apply(clean_text)\n",
+        "\n",
+        "# Save the updated dataset to a new CSV file\n",
+        "df.to_csv(\"cleaned_amazon_reviews.csv\", index=False)\n",
+        "print(\"Cleaned data saved successfully in 'cleaned_amazon_reviews.csv'!\")\n",
+        "\n",
+        "# Display sample output\n",
+        "print(df[[\"Reviews\", \"Cleaned_Reviews\"]].head())"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "1F_PZdH9Sh49"
+      },
+      "source": [
+        "# Question 3 (15 points)\n",
+        "\n",
+        "Write a python program to **conduct syntax and structure analysis of the clean text** you just saved above. The syntax and structure analysis includes:\n",
+        "\n",
+        "(1) **Parts of Speech (POS) Tagging:** Tag Parts of Speech of each word in the text, and calculate the total number of N(oun), V(erb), Adj(ective), Adv(erb), respectively.\n",
+        "\n",
+        "(2) **Constituency Parsing and Dependency Parsing:** print out the constituency parsing trees and dependency parsing trees of all the sentences. Using one sentence as an example to explain your understanding about the constituency parsing tree and dependency parsing tree.\n",
+        "\n",
+        "(3) **Named Entity Recognition:** Extract all the entities such as person names, organizations, locations, product names, and date from the clean texts, calculate the count of each entity."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": 5,
+      "metadata": {
+        "id": "Y0oOSlsOS0cq",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "9b8d5337-a2c1-49a6-f22d-7d80c14e91ca"
+      },
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stderr",
+          "text": [
+            "[nltk_data] Downloading package averaged_perceptron_tagger to\n",
+            "[nltk_data]     /root/nltk_data...\n",
+            "[nltk_data]   Package averaged_perceptron_tagger is already up-to-\n",
+            "[nltk_data]       date!\n",
+            "[nltk_data] Downloading package maxent_ne_chunker to\n",
+            "[nltk_data]     /root/nltk_data...\n",
+            "[nltk_data]   Unzipping chunkers/maxent_ne_chunker.zip.\n",
+            "[nltk_data] Downloading package words to /root/nltk_data...\n",
+            "[nltk_data]   Unzipping corpora/words.zip.\n",
+            "/usr/local/lib/python3.11/dist-packages/thinc/shims/pytorch.py:253: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.\n",
+            "  model.load_state_dict(torch.load(filelike, map_location=device))\n",
+            "[nltk_data] Downloading package benepar_en3 to /root/nltk_data...\n",
+            "[nltk_data]   Unzipping models/benepar_en3.zip.\n",
+            "/usr/local/lib/python3.11/dist-packages/benepar/parse_chart.py:169: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.\n",
+            "  state_dict = torch.load(\n",
+            "You are using the default legacy behaviour of the <class 'transformers.models.t5.tokenization_t5.T5Tokenizer'>. This is expected, and simply means that the `legacy` (previous) behavior will be used so nothing changes for you. If you want to use the new behaviour, set `legacy=False`. This should only be set if you understand what it means, and thoroughly read the reason why this was added as explained in https://github.com/huggingface/transformers/pull/24565\n"
+          ]
+        },
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "                                       Customer Name  \\\n",
+            "0  iPhone 15 pro review - 6 months later, still g...   \n",
+            "1  iPhone 15 pro review - 6 months later, still g...   \n",
+            "2  iPhone 15 pro review - 6 months later, still g...   \n",
+            "3                                    Amazon Customer   \n",
+            "4                                    Amazon Customer   \n",
+            "\n",
+            "                                 Review Title              Rating  \\\n",
+            "0    5.0 out of 5 starsBetter than expected!!  5.0 out of 5 stars   \n",
+            "1    5.0 out of 5 starsBetter than expected!!  5.0 out of 5 stars   \n",
+            "2    5.0 out of 5 starsBetter than expected!!  5.0 out of 5 stars   \n",
+            "3   5.0 out of 5 starsArrived pretty flawless  5.0 out of 5 stars   \n",
+            "4  5.0 out of 5 starsRefurbished works great!  5.0 out of 5 stars   \n",
+            "\n",
+            "                                             Reviews  \\\n",
+            "0  I never write reviews but I figured I would be...   \n",
+            "1  I never write reviews but I figured I would be...   \n",
+            "2  I never write reviews but I figured I would be...   \n",
+            "3  90% battery life, screen was in almost perfect...   \n",
+            "4  I was a little hesitant to get a refurbished p...   \n",
+            "\n",
+            "                                     Cleaned_Reviews  \n",
+            "0  never write reviews figured would theres many ...  \n",
+            "1  never write reviews figured would theres many ...  \n",
+            "2  never write reviews figured would theres many ...  \n",
+            "3  battery life screen almost perfect condition s...  \n",
+            "4  little hesitant get refurbished phone phone am...  \n"
+          ]
+        }
+      ],
+      "source": [
+        "import pandas as pd\n",
+        "import nltk\n",
+        "import spacy\n",
+        "from collections import Counter\n",
+        "from nltk import pos_tag, word_tokenize\n",
+        "from nltk.tree import Tree\n",
+        "from spacy import displacy\n",
+        "import benepar\n",
+        "\n",
+        "# Load cleaned data\n",
+        "df = pd.read_csv(\"cleaned_amazon_reviews.csv\")\n",
+        "\n",
+        "# Load NLP models\n",
+        "nltk.download('averaged_perceptron_tagger')\n",
+        "nltk.download('maxent_ne_chunker')\n",
+        "nltk.download('words')\n",
+        "nlp = spacy.load(\"en_core_web_trf\")  # Transformer model for better dependency parsing\n",
+        "\n",
+        "# Load constituency parser\n",
+        "benepar.download('benepar_en3')\n",
+        "nlp.add_pipe(\"benepar\", config={\"model\": \"benepar_en3\"})\n",
+        "\n",
+        "# Display first few rows\n",
+        "print(df.head())\n"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "# **Following Questions must answer using AI assitance**"
+      ],
+      "metadata": {
+        "id": "EcVqy1yj3wja"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "#Question 4 (20 points)."
+      ],
+      "metadata": {
+        "id": "kEdcyHX8VaDB"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "Q4. (PART-1)\n",
+        "Web scraping data from the GitHub Marketplace to gather details about popular actions. Using Python, the process begins by sending HTTP requests to multiple pages of the marketplace (1000 products), handling pagination through dynamic page numbers. The key details extracted include the product name, a short description, and the URL.\n",
+        "\n",
+        " The extracted data is stored in a structured CSV format with columns for product name, description, URL, and page number. A time delay is introduced between requests to avoid server overload. ChatGPT can assist by helping with the parsing of HTML, error handling, and generating reports based on the data collected.\n",
+        "\n",
+        " The goal is to complete the scraping within a specified time limit, ensuring that the process is efficient and adheres to GitHub’s usage guidelines.\n",
+        "\n",
+        "(PART -2)\n",
+        "\n",
+        "1.   **Preprocess Data**: Clean the text by tokenizing, removing stopwords, and converting to lowercase.\n",
+        "\n",
+        "2. Perform **Data Quality** operations.\n",
+        "\n",
+        "\n",
+        "Preprocessing:\n",
+        "Preprocessing involves cleaning the text by removing noise such as special characters, HTML tags, and unnecessary whitespace. It also includes tasks like tokenization, stopword removal, and lemmatization to standardize the text for analysis.\n",
+        "\n",
+        "Data Quality:\n",
+        "Data quality checks ensure completeness, consistency, and accuracy by verifying that all required columns are filled and formatted correctly. Additionally, it involves identifying and removing duplicates, handling missing values, and ensuring the data reflects the true content accurately.\n"
+      ],
+      "metadata": {
+        "id": "1Ung5_YW3C6y"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "Github MarketPlace page:\n",
+        "https://github.com/marketplace?type=actions"
+      ],
+      "metadata": {
+        "id": "CTOfUpatronW"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "from bs4 import BeautifulSoup\n",
+        "from urllib.request import Request, urlopen\n",
+        "from urllib.error import URLError\n",
+        "import csv\n",
+        "import requests\n",
+        "import time\n",
+        "import random\n",
+        "\n",
+        "def apply_exponential_backoff(attempt):\n",
+        "    wait_time = min(2 ** attempt + random.uniform(0, 1), 10)\n",
+        "    print(f\"Retrying in {wait_time:.2f} seconds...\")\n",
+        "    time.sleep(wait_time)\n",
+        "\n",
+        "session = requests.Session()\n",
+        "session.headers.update({'User-Agent': 'Mozilla/5.0'})\n",
+        "\n",
+        "def fetch_action_links(page_num):\n",
+        "    page_url = f\"https://github.com/marketplace?type=actions&page={page_num}\"\n",
+        "    actions_list = []\n",
+        "    print(f\"Scrapping Page {page_num}\")\n",
+        "\n",
+        "    for attempt in range(5):\n",
+        "        try:\n",
+        "            request = Request(page_url, headers={'User-Agent': 'Mozilla/5.0'})\n",
+        "            response = urlopen(request, timeout=10)\n",
+        "            soup = BeautifulSoup(response, 'html.parser')\n",
+        "\n",
+        "            for action in soup.find_all(\"div\", attrs={'data-testid': 'non-featured-item'}):\n",
+        "                action_anchor = action.find(\"a\", href=True)\n",
+        "                action_title = action_anchor.text.strip() if action_anchor else \"N/A\"\n",
+        "                action_url = f\"https://github.com{action_anchor['href']}\" if action_anchor else \"N/A\"\n",
+        "\n",
+        "                actions_list.append({\n",
+        "                    'Page': page_num,\n",
+        "                    'Action Name': action_title,\n",
+        "                    'URL': action_url,\n",
+        "                    'Description': \"N/A\"\n",
+        "                })\n",
+        "\n",
+        "            print(f\"Extracting {len(actions_list)} action links.\")\n",
+        "            break\n",
+        "        except URLError as error:\n",
+        "            print(f\"Error processing page {page_num}: {error}\")\n",
+        "            apply_exponential_backoff(attempt)\n",
+        "\n",
+        "    return actions_list\n",
+        "\n",
+        "\n",
+        "def fetch_action_descriptions(actions_data):\n",
+        "    for action in actions_data:\n",
+        "        action_url = action['URL']\n",
+        "\n",
+        "        for attempt in range(5):\n",
+        "            try:\n",
+        "                response = session.get(action_url, timeout=10)\n",
+        "\n",
+        "                if response.status_code == 200:\n",
+        "                    soup = BeautifulSoup(response.content, 'html.parser')\n",
+        "                    about_section = soup.find('div', attrs={'data-testid': 'about'})\n",
+        "\n",
+        "                    if about_section:\n",
+        "                        description_span = about_section.find('span')\n",
+        "                        if description_span:\n",
+        "                            action['Description'] = description_span.get_text().strip()\n",
+        "\n",
+        "                break\n",
+        "            except requests.exceptions.RequestException as error:\n",
+        "                print(f\"Error fetching {action_url}: {error}\")\n",
+        "                apply_exponential_backoff(attempt)\n",
+        "\n",
+        "    return actions_data\n",
+        "\n",
+        "def save_data_to_csv(data, filename):\n",
+        "    with open(filename, mode='w', newline='', encoding='utf-8') as file:\n",
+        "        writer = csv.DictWriter(file, fieldnames=['Page', 'Action Name', 'URL', 'Description'])\n",
+        "        writer.writeheader()\n",
+        "        writer.writerows(data)\n",
+        "\n",
+        "if __name__ == \"__main__\":\n",
+        "    all_actions = []\n",
+        "\n",
+        "    for page in range(1, 60):\n",
+        "        page_actions = fetch_action_links(page)\n",
+        "        all_actions.extend(page_actions)\n",
+        "\n",
+        "        time.sleep(5)\n",
+        "    enriched_actions = fetch_action_descriptions(all_actions)\n",
+        "    save_data_to_csv(enriched_actions, \"github_actions_data.csv\")\n",
+        "    print(\"Data saved to 'github_actions_data.csv'.\")"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "9yPdKuloll7P",
+        "outputId": "e2777364-977a-4cdd-b8cd-5f016812d46a"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Processing Page 1\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 2\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 3\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 4\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 5\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 6\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 7\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 8\n",
+            "☑️ Extracted 0 action links.\n",
+            "Processing Page 9\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 10\n",
+            "☑️ Extracted 0 action links.\n",
+            "Processing Page 11\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 12\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 13\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 14\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 15\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 16\n",
+            "☑️ Extracted 0 action links.\n",
+            "Processing Page 17\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 18\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 19\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 20\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 21\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 22\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 23\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 24\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 25\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 26\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 27\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 28\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 29\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 30\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 31\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 32\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 33\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 34\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 35\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 36\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 37\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 38\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 39\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 40\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 41\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 42\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 43\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 44\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 45\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 46\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 47\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 48\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 49\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 50\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 51\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 52\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 53\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 54\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 55\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 56\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 57\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 58\n",
+            "☑️ Extracted 20 action links.\n",
+            "Processing Page 59\n",
+            "☑️ Extracted 20 action links.\n",
+            "☑️ Data extraction completed and saved to 'github_actions_data.csv'.\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import requests\n",
+        "from bs4 import BeautifulSoup\n",
+        "import time\n",
+        "import csv\n",
+        "\n",
+        "BASE_URL = f\"https://github.com/marketplace?type=actions&page={page_number}\"\n",
+        "HEADERS = {\"User-Agent\": \"Mozilla/5.0\"}\n",
+        "OUTPUT_FILE = \"github_marketplace_actions.csv\"\n",
+        "\n",
+        "def scrape_page(page_number):\n",
+        "    url = BASE_URL.format(page_number)\n",
+        "    response = requests.get(url, headers=HEADERS)\n",
+        "    if response.status_code != 200:\n",
+        "        print(f\"Failed to fetch page {page_number}\")\n",
+        "        return []\n",
+        "\n",
+        "    soup = BeautifulSoup(response.text, \"html.parser\")\n",
+        "    actions = []\n",
+        "\n",
+        "    for item in soup.find_all(\"article\", class_=\"col-12 d-flex flex-md-row border-md-bottom py-4\"):\n",
+        "        name_tag = item.find(\"h3\")\n",
+        "        description_tag = item.find(\"p\")\n",
+        "        link_tag = item.find(\"a\", href=True)\n",
+        "\n",
+        "        name = name_tag.text.strip() if name_tag else \"N/A\"\n",
+        "        description = description_tag.text.strip() if description_tag else \"N/A\"\n",
+        "        url = \"https://github.com\" + link_tag[\"href\"] if link_tag else \"N/A\"\n",
+        "\n",
+        "        actions.append([name, description, url, page_number])\n",
+        "\n",
+        "    return actions\n",
+        "\n",
+        "def scrape_github_marketplace(total_pages=10, delay=2):\n",
+        "    all_actions = []\n",
+        "    for page in range(1, total_pages + 1):\n",
+        "        print(f\"Scraping page {page}...\")\n",
+        "        all_actions.extend(scrape_page(page))\n",
+        "        time.sleep(delay)  # Delay to prevent rate-limiting\n",
+        "\n",
+        "    with open(OUTPUT_FILE, \"w\", newline=\"\", encoding=\"utf-8\") as file:\n",
+        "        writer = csv.writer(file)\n",
+        "        writer.writerow([\"Product Name\", \"Description\", \"URL\", \"Page Number\"])\n",
+        "        writer.writerows(all_actions)\n",
+        "\n",
+        "    print(f\"Scraping completed. Data saved to {OUTPUT_FILE}\")\n",
+        "\n",
+        "scrape_github_marketplace(total_pages=50, delay=3)  # Adjust total_pages for 1000 products"
+      ],
+      "metadata": {
+        "id": "4dtco9K--ks6",
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "outputId": "d612a127-4773-4aee-a487-85dc1a70f07d"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Scraping page 1...\n",
+            "Failed to fetch page 1\n",
+            "Scraping page 2...\n",
+            "Failed to fetch page 2\n",
+            "Scraping page 3...\n",
+            "Failed to fetch page 3\n",
+            "Scraping page 4...\n",
+            "Failed to fetch page 4\n",
+            "Scraping page 5...\n",
+            "Failed to fetch page 5\n",
+            "Scraping page 6...\n",
+            "Failed to fetch page 6\n",
+            "Scraping page 7...\n",
+            "Failed to fetch page 7\n",
+            "Scraping page 8...\n",
+            "Failed to fetch page 8\n",
+            "Scraping page 9...\n",
+            "Failed to fetch page 9\n",
+            "Scraping page 10...\n",
+            "Failed to fetch page 10\n",
+            "Scraping page 11...\n",
+            "Failed to fetch page 11\n",
+            "Scraping page 12...\n",
+            "Failed to fetch page 12\n",
+            "Scraping page 13...\n",
+            "Failed to fetch page 13\n",
+            "Scraping page 14...\n",
+            "Failed to fetch page 14\n",
+            "Scraping page 15...\n",
+            "Failed to fetch page 15\n",
+            "Scraping page 16...\n",
+            "Failed to fetch page 16\n",
+            "Scraping page 17...\n",
+            "Failed to fetch page 17\n",
+            "Scraping page 18...\n",
+            "Failed to fetch page 18\n",
+            "Scraping page 19...\n",
+            "Failed to fetch page 19\n",
+            "Scraping page 20...\n",
+            "Failed to fetch page 20\n",
+            "Scraping page 21...\n",
+            "Failed to fetch page 21\n",
+            "Scraping page 22...\n",
+            "Failed to fetch page 22\n",
+            "Scraping page 23...\n",
+            "Failed to fetch page 23\n",
+            "Scraping page 24...\n",
+            "Failed to fetch page 24\n",
+            "Scraping page 25...\n",
+            "Failed to fetch page 25\n",
+            "Scraping page 26...\n",
+            "Failed to fetch page 26\n",
+            "Scraping page 27...\n",
+            "Failed to fetch page 27\n",
+            "Scraping page 28...\n",
+            "Failed to fetch page 28\n",
+            "Scraping page 29...\n",
+            "Failed to fetch page 29\n",
+            "Scraping page 30...\n",
+            "Failed to fetch page 30\n",
+            "Scraping page 31...\n",
+            "Failed to fetch page 31\n",
+            "Scraping page 32...\n",
+            "Failed to fetch page 32\n",
+            "Scraping page 33...\n",
+            "Failed to fetch page 33\n",
+            "Scraping page 34...\n",
+            "Failed to fetch page 34\n",
+            "Scraping page 35...\n",
+            "Failed to fetch page 35\n",
+            "Scraping page 36...\n",
+            "Failed to fetch page 36\n",
+            "Scraping page 37...\n",
+            "Failed to fetch page 37\n",
+            "Scraping page 38...\n",
+            "Failed to fetch page 38\n",
+            "Scraping page 39...\n",
+            "Failed to fetch page 39\n",
+            "Scraping page 40...\n",
+            "Failed to fetch page 40\n",
+            "Scraping page 41...\n",
+            "Failed to fetch page 41\n",
+            "Scraping page 42...\n",
+            "Failed to fetch page 42\n",
+            "Scraping page 43...\n",
+            "Failed to fetch page 43\n",
+            "Scraping page 44...\n",
+            "Failed to fetch page 44\n",
+            "Scraping page 45...\n",
+            "Failed to fetch page 45\n",
+            "Scraping page 46...\n",
+            "Failed to fetch page 46\n",
+            "Scraping page 47...\n",
+            "Failed to fetch page 47\n",
+            "Scraping page 48...\n",
+            "Failed to fetch page 48\n",
+            "Scraping page 49...\n",
+            "Failed to fetch page 49\n",
+            "Scraping page 50...\n",
+            "Failed to fetch page 50\n",
+            "Scraping completed. Data saved to github_marketplace_actions.csv\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "#Question 5 (20 points)\n",
+        "\n",
+        "PART 1:\n",
+        "Web Scrape  tweets from Twitter using the Tweepy API, specifically targeting hashtags related to subtopics (machine learning or artificial intelligence.)\n",
+        "The extracted data includes the tweet ID, username, and text.\n",
+        "\n",
+        "Part 2:\n",
+        "Perform data cleaning procedures\n",
+        "\n",
+        "A final data quality check ensures the completeness and consistency of the dataset. The cleaned data is then saved into a CSV file for further analysis.\n",
+        "\n",
+        "\n",
+        "**Note**\n",
+        "\n",
+        "1.   Follow tutorials provided in canvas to obtain api keys. Use ChatGPT to get the code. Make sure the file is downloaded and saved.\n",
+        "2.   Make sure you divide GPT code as shown in tutorials, dont make multiple requestes.\n"
+      ],
+      "metadata": {
+        "id": "3WeD70ty3Gui"
+      }
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import tweepy\n",
+        "import pandas as pd"
+      ],
+      "metadata": {
+        "id": "XaBA4MAlZqFh"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Twitter API credentials\n",
+        "api_key = \"hJBFNJS43WU7LSVh5qP9vwP29\"\n",
+        "api_key_secret = \"nwO4qwhjJhXEgfZdZXm3fa3m36SdVJ9eh22bXaC70Z3DysgnHL\"\n",
+        "access_token = \"1892405978232213506-9X9bSMsjy7Qz3l0r3qIMrThffcAtbg\"\n",
+        "access_token_secret = \"fAxtSF7oqqz3ckv4hECPT6BqPdrPd9XxbLEzof3rCZegS\"\n",
+        "\n",
+        "# Authenticate with Twitter API\n",
+        "auth = tweepy.OAuth1UserHandler(api_key, api_key_secret, access_token, access_token_secret)\n",
+        "api = tweepy.API(auth, wait_on_rate_limit=True)"
+      ],
+      "metadata": {
+        "id": "kPZ3DdN6uSFv"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "query = \"(#MachineLearning OR #ArtificialIntelligence OR #AI OR #ML) -is:retweet\"\n",
+        "\n",
+        "# Use Twitter API v2\n",
+        "client = tweepy.Client(bearer_token=\"AAAAAAAAAAAAAAAAAAAAAEWozQEAAAAAtrS2ekPoriaBTYlzYDaINM5s%2FdA%3DuOUfS5GxD4pVRWv3aZ0AB6N13QvAz2EMLLtxKcZoyNaQJlQ6u1\")\n",
+        "\n",
+        "tweets = client.search_recent_tweets(query=query,\n",
+        "                                     tweet_fields=[\"created_at\", \"text\", \"author_id\"],\n",
+        "                                     max_results=100)\n",
+        "\n",
+        "# Store the tweets\n",
+        "tweet_data = []\n",
+        "\n",
+        "for tweet in tweets.data:\n",
+        "    tweet_data.append({\n",
+        "        'tweet_id': tweet.id,\n",
+        "        'created_at': tweet.created_at,\n",
+        "        'user': tweet.author_id,  # API v2 does not return screen_name directly\n",
+        "        'text': tweet.text\n",
+        "    })"
+      ],
+      "metadata": {
+        "id": "aquUajoeupQ5"
+      },
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "print(len(tweet_data))  # Check how many tweets were stored\n",
+        "print(tweet_data[:5])   # Print first 05 tweets for verification"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "BP6RSigOu2Rc",
+        "outputId": "ce653315-04a6-416b-cb78-b2718a7340ce"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "100\n",
+            "[{'tweet_id': 1892439292938420494, 'created_at': datetime.datetime(2025, 2, 20, 5, 1, 1, tzinfo=datetime.timezone.utc), 'user': 1774692567457636352, 'text': '𝗫𝗯𝗼𝘅 𝗚𝗮𝗺𝗲 𝗣𝗮𝘀𝘀: 𝗕𝗲𝘀𝘁 𝗚𝗮𝗺𝗲𝘀 𝘁𝗼 𝗣𝗹𝗮𝘆 𝗶𝗻 𝟮𝟬𝟮𝟱  Xbox Game Pass has a wide range of games to offer to player\\n\\nhttps://t.co/387JiuGAQJ\\n\\n#Xboxgames #XboxGamePass #bestXboxGamePassgames #GamingNews #AI #AINews #AnalyticsInsight #AnalyticsInsightMagazine https://t.co/ebjljckq1a'}, {'tweet_id': 1892439292305117687, 'created_at': datetime.datetime(2025, 2, 20, 5, 1, 1, tzinfo=datetime.timezone.utc), 'user': 1889043299748519937, 'text': '🏃 I’ve just started earning Bytes on @despeednet - the world’s first decentralized network for internet speed verification! 🌐\\n\\n⚙️ Set up your #DeSpeed Validator today and start earning Bytes.\\n\\n👉 Kickstart your journey here: https://t.co/R6oqoEDqkU\\n\\n#Depin #Extension #Web3 #AI'}, {'tweet_id': 1892439283618697529, 'created_at': datetime.datetime(2025, 2, 20, 5, 0, 59, tzinfo=datetime.timezone.utc), 'user': 1364079326623268866, 'text': 'Tweet:\\n\\n🇨🇳 China’s AI surveillance is years ahead.\\n\\n🔹 Facial recognition &amp; social credit system 👁️\\n🔹 AI + Quantum = Cyber warfare dominance\\n🔹 U.S. fears AI-driven hacking &amp; espionage\\n\\n💀 China’s digital control could reshape global power.\\n\\n#AI #BigBrother https://t.co/Ut8c3vy5bI'}, {'tweet_id': 1892439273170755842, 'created_at': datetime.datetime(2025, 2, 20, 5, 0, 57, tzinfo=datetime.timezone.utc), 'user': 1397046895562928129, 'text': '#Feet #feet #feetworshi̇p #foot #like #pretty #socks #toe #socksjob #sockjob #lick #beautiful #pleasured #fun #massage #soles #pretty #ai #game #footjob #girl #drawingart #art #lick #soles #summer #nails #lick https://t.co/KC2OItZyEi'}, {'tweet_id': 1892439272914915463, 'created_at': datetime.datetime(2025, 2, 20, 5, 0, 57, tzinfo=datetime.timezone.utc), 'user': 1783262988473978880, 'text': '👑🌊The twins are with a friend!🌊👑\\n#goddessofthesea #deepsea #SeaArtAI #thesea #AIart #AI #AIcommunity #AIContent #ocean #photostory #ridingthewaves #oceanview #cave #Magic #niceass #seamonster #SeaHorse https://t.co/VNygNBetRi https://t.co/m7PwVv8wu0'}]\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "# Convert to DataFrame\n",
+        "df = pd.DataFrame(tweet_data)\n",
+        "\n",
+        "# Save as CSV file\n",
+        "df.to_csv(\"tweets.csv\", index=False, encoding=\"utf-8\")\n",
+        "\n",
+        "print(\"Tweets saved successfully to tweets.csv\")"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "VfpdgUd-u_wp",
+        "outputId": "35e7a172-3561-425a-bd77-1eacf77a3b42"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Tweets saved successfully to tweets.csv\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "df_check = pd.read_csv(\"tweets.csv\")\n",
+        "print(df_check.head())"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "vJd4Nz-4vE7f",
+        "outputId": "0d129dd8-55fa-4835-8ec7-d2c81c79eb13"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "              tweet_id                 created_at                 user  \\\n",
+            "0  1892439292938420494  2025-02-20 05:01:01+00:00  1774692567457636352   \n",
+            "1  1892439292305117687  2025-02-20 05:01:01+00:00  1889043299748519937   \n",
+            "2  1892439283618697529  2025-02-20 05:00:59+00:00  1364079326623268866   \n",
+            "3  1892439273170755842  2025-02-20 05:00:57+00:00  1397046895562928129   \n",
+            "4  1892439272914915463  2025-02-20 05:00:57+00:00  1783262988473978880   \n",
+            "\n",
+            "                                                text  \n",
+            "0  𝗫𝗯𝗼𝘅 𝗚𝗮𝗺𝗲 𝗣𝗮𝘀𝘀: 𝗕𝗲𝘀𝘁 𝗚𝗮𝗺𝗲𝘀 𝘁𝗼 𝗣𝗹𝗮𝘆 𝗶𝗻 𝟮𝟬𝟮𝟱  Xb...  \n",
+            "1  🏃 I’ve just started earning Bytes on @despeedn...  \n",
+            "2  Tweet:\\n\\n🇨🇳 China’s AI surveillance is years ...  \n",
+            "3  #Feet #feet #feetworshi̇p #foot #like #pretty ...  \n",
+            "4  👑🌊The twins are with a friend!🌊👑\\n#goddessofth...  \n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "pip install nltk"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "Bk7DGFlZvoLG",
+        "outputId": "a7107065-eac6-429c-8ada-05aae08030e4"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Requirement already satisfied: nltk in /usr/local/lib/python3.11/dist-packages (3.9.1)\n",
+            "Requirement already satisfied: click in /usr/local/lib/python3.11/dist-packages (from nltk) (8.1.8)\n",
+            "Requirement already satisfied: joblib in /usr/local/lib/python3.11/dist-packages (from nltk) (1.4.2)\n",
+            "Requirement already satisfied: regex>=2021.8.3 in /usr/local/lib/python3.11/dist-packages (from nltk) (2024.11.6)\n",
+            "Requirement already satisfied: tqdm in /usr/local/lib/python3.11/dist-packages (from nltk) (4.67.1)\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "code",
+      "source": [
+        "import pandas as pd\n",
+        "import re\n",
+        "import nltk\n",
+        "from nltk.corpus import stopwords\n",
+        "from nltk.stem import WordNetLemmatizer\n",
+        "from textblob import TextBlob  # For spell checking\n",
+        "import emoji  # To remove emojis\n",
+        "import unidecode  # To normalize accented characters\n",
+        "\n",
+        "# Download required NLTK resources\n",
+        "nltk.download(\"stopwords\")\n",
+        "nltk.download(\"wordnet\")\n",
+        "nltk.download(\"omw-1.4\")\n",
+        "\n",
+        "# Load the scraped tweets\n",
+        "df = pd.read_csv(\"tweets.csv\")  # Update the file path if needed\n",
+        "\n",
+        "# 1️⃣ Remove duplicates based on tweet_id\n",
+        "df.drop_duplicates(subset=\"tweet_id\", keep=\"first\", inplace=True)\n",
+        "\n",
+        "# 2️⃣ Drop rows with missing values\n",
+        "df.dropna(inplace=True)\n",
+        "\n",
+        "# Initialize NLP tools\n",
+        "lemmatizer = WordNetLemmatizer()\n",
+        "try:\n",
+        "    stop_words = set(stopwords.words(\"english\"))\n",
+        "except:\n",
+        "    nltk.download(\"stopwords\")\n",
+        "    stop_words = set(stopwords.words(\"english\"))\n",
+        "\n",
+        "# 3️⃣ Text Cleaning Function\n",
+        "def clean_text(text):\n",
+        "    text = unidecode.unidecode(text)  # Normalize accented characters\n",
+        "    text = re.sub(r\"http\\S+|www\\S+\", \"\", text)  # Remove URLs\n",
+        "    text = re.sub(r\"@[A-Za-z0-9_]+\", \"\", text)  # Remove mentions\n",
+        "    text = re.sub(r\"#(\\w+)\", r\"\\1\", text)  # Keep hashtags' words\n",
+        "    text = re.sub(r\"[^\\w\\s]\", \"\", text)  # Remove special characters\n",
+        "    text = emoji.replace_emoji(text, replace=\"\")  # Remove emojis\n",
+        "    text = re.sub(r\"\\s+\", \" \", text).strip()  # Remove extra spaces\n",
+        "    return text.lower()  # Convert to lowercase\n",
+        "\n",
+        "# 4️⃣ Remove stopwords & Lemmatization\n",
+        "def preprocess_text(text):\n",
+        "    words = text.split()\n",
+        "    words = [lemmatizer.lemmatize(word) for word in words if word not in stop_words]\n",
+        "    return \" \".join(words)\n",
+        "\n",
+        "# 5️⃣ Spell Checking (Optimize by applying only to short tweets)\n",
+        "def correct_spelling(text):\n",
+        "    if len(text.split()) < 5:  # Only correct short tweets to save time\n",
+        "        return str(TextBlob(text).correct())\n",
+        "    return text\n",
+        "\n",
+        "# Apply all transformations in one step\n",
+        "df[\"text\"] = df[\"text\"].apply(lambda x: correct_spelling(preprocess_text(clean_text(x))))\n",
+        "\n",
+        "# 6️⃣ Convert 'created_at' to datetime format\n",
+        "df[\"created_at\"] = pd.to_datetime(df[\"created_at\"], errors=\"coerce\")\n",
+        "\n",
+        "# 7️⃣ Final quality check\n",
+        "print(\"Final dataset shape:\", df.shape)\n",
+        "print(df.head())\n",
+        "\n",
+        "# Save cleaned data to a new CSV file\n",
+        "cleaned_filename = \"final_cleaned_tweets.csv\"\n",
+        "df.to_csv(cleaned_filename, index=False, encoding=\"utf-8\")\n",
+        "\n",
+        "print(f\"🎉 Deep cleaning complete! Cleaned data saved as '{cleaned_filename}'.\")\n"
+      ],
+      "metadata": {
+        "colab": {
+          "base_uri": "https://localhost:8080/"
+        },
+        "id": "JlNV1V6ixccp",
+        "outputId": "5d7f3f5d-0341-4b13-bf4f-29208b4d3180"
+      },
+      "execution_count": null,
+      "outputs": [
+        {
+          "output_type": "stream",
+          "name": "stderr",
+          "text": [
+            "[nltk_data] Downloading package stopwords to /root/nltk_data...\n",
+            "[nltk_data]   Package stopwords is already up-to-date!\n",
+            "[nltk_data] Downloading package wordnet to /root/nltk_data...\n",
+            "[nltk_data]   Package wordnet is already up-to-date!\n",
+            "[nltk_data] Downloading package omw-1.4 to /root/nltk_data...\n",
+            "[nltk_data]   Package omw-1.4 is already up-to-date!\n"
+          ]
+        },
+        {
+          "output_type": "stream",
+          "name": "stdout",
+          "text": [
+            "Final dataset shape: (100, 4)\n",
+            "              tweet_id                created_at                 user  \\\n",
+            "0  1892439292938420494 2025-02-20 05:01:01+00:00  1774692567457636352   \n",
+            "1  1892439292305117687 2025-02-20 05:01:01+00:00  1889043299748519937   \n",
+            "2  1892439283618697529 2025-02-20 05:00:59+00:00  1364079326623268866   \n",
+            "3  1892439273170755842 2025-02-20 05:00:57+00:00  1397046895562928129   \n",
+            "4  1892439272914915463 2025-02-20 05:00:57+00:00  1783262988473978880   \n",
+            "\n",
+            "                                                text  \n",
+            "0  xbox game pas best game play 2025 xbox game pa...  \n",
+            "1  ive started earning byte world first decentral...  \n",
+            "2  tweet china ai surveillance year ahead facial ...  \n",
+            "3  foot foot feetworship foot like pretty sock to...  \n",
+            "4  twin friend goddessofthesea deepsea seaartai t...  \n",
+            "🎉 Deep cleaning complete! Cleaned data saved as 'final_cleaned_tweets.csv'.\n"
+          ]
+        }
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "# Mandatory Question\n",
+        "\n",
+        "Provide your thoughts on the assignment. What did you find challenging, and what aspects did you enjoy? Your opinion on the provided time to complete the assignment."
+      ],
+      "metadata": {
+        "id": "q8BFCvWp32cf"
+      }
+    },
+    {
+      "cell_type": "markdown",
+      "source": [
+        "# Write your response below\n",
+        "Fill out survey and provide your valuable feedback.\n",
+        "\n",
+        "https://docs.google.com/forms/d/e/1FAIpQLSd_ObuA3iNoL7Az_C-2NOfHodfKCfDzHZtGRfIker6WyZqTtA/viewform?usp=dialog"
+      ],
+      "metadata": {
+        "id": "JbTa-jDS-KFI"
+      }
+    }
+  ],
+  "metadata": {
+    "colab": {
+      "provenance": [],
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "display_name": "Python 3 (ipykernel)",
+      "language": "python",
+      "name": "python3"
+    },
+    "language_info": {
+      "codemirror_mode": {
+        "name": "ipython",
+        "version": 3
+      },
+      "file_extension": ".py",
+      "mimetype": "text/x-python",
+      "name": "python",
+      "nbconvert_exporter": "python",
+      "pygments_lexer": "ipython3",
+      "version": "3.9.12"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 0
+}
